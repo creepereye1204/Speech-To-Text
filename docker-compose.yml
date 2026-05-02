@@ -1,0 +1,62 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: s2t_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ecommerce
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]   # GPU 0 번 할당 (2080 Ti #1)
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: s2t_app:latest
+    container_name: s2t_app
+    restart: unless-stopped
+    ports:
+      - "8100:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=exaone3.5:7.8b
+      - WHISPER_MODEL_SIZE=large-v3-turbo
+    volumes:
+      - whisper_cache:/root/.cache/huggingface  # Whisper 모델 캐시 유지
+      - ./static:/app/static                    # 프론트엔드 핫리로드
+      - ./main.py:/app/main.py                  # 코드 변경 즉시 반영
+    networks:
+      - ecommerce
+    depends_on:
+      ollama:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]   # GPU 1 번 할당 (2080 Ti #2)
+              capabilities: [gpu]
+
+volumes:
+  ollama_data:    # Ollama 모델 파일 영구 보존
+  whisper_cache:  # Whisper 모델 영구 보존
+
+networks:
+  ecommerce:
+    external: true

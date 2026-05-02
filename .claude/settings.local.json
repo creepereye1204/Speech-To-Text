@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker run *)",
+      "Bash(docker compose *)",
+      "Bash(curl -s http://localhost:8100/health)",
+      "Bash(python3 -m json.tool)",
+      "Bash(ffmpeg -f lavfi -i \"sine=frequency=440:duration=3\" -ar 16000 /tmp/test_audio.wav -y)",
+      "Bash(curl -s -N -X POST http://localhost:8100/transcribe -F file=@/tmp/test_audio.wav --max-time 300)",
+      "Bash(curl *)",
+      "Bash(docker exec s2t_ollama *)"
+    ]
+  }
+}

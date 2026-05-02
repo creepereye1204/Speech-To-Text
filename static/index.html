@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 회의록 자동화</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #0a0c12;
+      --surface: #13161f;
+      --surface2: #1c2030;
+      --surface3: #242840;
+      --border: #2a2f4a;
+      --accent: #6c63ff;
+      --green: #4ade80;
+      --red: #f87171;
+      --amber: #fbbf24;
+      --cyan: #22d3ee;
+      --text: #e8eaf6;
+      --muted: #6b7399;
+      --radius: 14px;
+      --spk0: #6c63ff;
+      --spk1: #4ade80;
+      --spk2: #f59e0b;
+      --spk3: #22d3ee;
+      --spk4: #f472b6;
+      --spk5: #a78bfa;
+      --spk6: #34d399;
+      --spk7: #fb923c;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 100px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 40px
+    }
+
+    header h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #6c63ff 0%, #22d3ee 60%, #4ade80 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.6
+    }
+
+    .pills {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 14px
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: .74rem;
+      color: var(--muted);
+    }
+
+    .pill span {
+      color: var(--text);
+      font-weight: 600
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted)
+    }
+
+    .dot.ok {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green)
+    }
+
+    .dot.err {
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red)
+    }
+
+    .status-label {
+      font-size: .78rem;
+      color: var(--muted)
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      width: 100%;
+      max-width: 780px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Upload ── */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 50px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    #drop-zone:hover,
+    #drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(108, 99, 255, .07);
+    }
+
+    #drop-zone svg {
+      color: var(--muted);
+      margin-bottom: 14px
+    }
+
+    #drop-zone .lbl {
+      font-size: 1.05rem;
+      font-weight: 600
+    }
+
+    #drop-zone .sub {
+      margin-top: 7px;
+      font-size: .82rem;
+      color: var(--muted)
+    }
+
+    #file-input {
+      display: none
+    }
+
+    #file-info {
+      display: none;
+      align-items: center;
+      gap: 14px;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-top: 16px;
+    }
+
+    #file-info svg {
+      flex-shrink: 0;
+      color: var(--accent)
+    }
+
+    .fi-name {
+      font-weight: 600;
+      font-size: .93rem;
+      word-break: break-all
+    }
+
+    .fi-meta {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    #remove-btn {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+
+    #remove-btn:hover {
+      color: var(--red)
+    }
+
+    #submit-btn {
+      width: 100%;
+      margin-top: 18px;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #6c63ff, #5651e5);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .02em;
+      transition: opacity .2s, transform .1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    #submit-btn:disabled {
+      opacity: .4;
+      cursor: not-allowed
+    }
+
+    #submit-btn:not(:disabled):hover {
+      opacity: .9;
+      transform: translateY(-1px)
+    }
+
+    #error-box {
+      display: none;
+      background: rgba(248, 113, 113, .1);
+      border: 1px solid rgba(248, 113, 113, .3);
+      border-radius: 10px;
+      padding: 13px 16px;
+      color: var(--red);
+      font-size: .88rem;
+      margin-top: 14px;
+    }
+
+    /* ── Progress ── */
+    #progress-card {
+      display: none
+    }
+
+    .p-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px
+    }
+
+    .p-label {
+      font-size: .85rem;
+      color: var(--muted);
+      font-weight: 500
+    }
+
+    #elapsed {
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: .9rem
+    }
+
+    .prog-wrap {
+      width: 100%;
+      background: var(--surface2);
+      border-radius: 20px;
+      height: 10px;
+      overflow: hidden;
+      margin-bottom: 22px
+    }
+
+    .prog-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--cyan), var(--green));
+      width: 0%;
+      transition: width .35s ease;
+      border-radius: 20px
+    }
+
+    .steps {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 16px;
+      border-radius: 10px;
+      background: var(--surface2);
+      font-size: .88rem;
+      color: var(--muted);
+      transition: all .3s;
+      border-left: 3px solid transparent;
+    }
+
+    .step.active {
+      color: var(--text);
+      border-left-color: var(--accent);
+      background: rgba(108, 99, 255, .08)
+    }
+
+    .step.done {
+      color: var(--green);
+      border-left-color: var(--green);
+      background: rgba(74, 222, 128, .05)
+    }
+
+    .step-ico {
+      font-size: 1.1rem;
+      width: 22px;
+      text-align: center;
+      flex-shrink: 0
+    }
+
+    .step-pct {
+      margin-left: auto;
+      font-size: .75rem;
+      font-variant-numeric: tabular-nums;
+      opacity: .7
+    }
+
+    /* ── Result ── */
+    #result-card {
+      display: none
+    }
+
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 22px
+    }
+
+    .stat {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: .78rem;
+      color: var(--muted)
+    }
+
+    .stat b {
+      color: var(--text);
+      font-weight: 600
+    }
+
+    /* Speaker legend */
+    .spk-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px
+    }
+
+    .spk-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 20px;
+      padding: 5px 13px;
+      font-size: .78rem;
+      font-weight: 600;
+      border: 1px solid;
+    }
+
+    .spk-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    /* Tab nav */
+    .tab-nav {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 4px
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 9px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: .86rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .tab-btn.active {
+      background: var(--surface3);
+      color: var(--text)
+    }
+
+    /* Section */
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: .76rem;
+      font-weight: 700
+    }
+
+    .badge.purple {
+      background: rgba(108, 99, 255, .15);
+      color: #a29bff
+    }
+
+    .badge.green {
+      background: rgba(74, 222, 128, .12);
+      color: #4ade80
+    }
+
+    .badge.cyan {
+      background: rgba(34, 211, 238, .12);
+      color: #22d3ee
+    }
+
+    .copy-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: .76rem;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .copy-btn:hover {
+      color: var(--text);
+      border-color: var(--accent)
+    }
+
+    .copy-btn.copied {
+      color: var(--green);
+      border-color: var(--green)
+    }
+
+    /* Dialogue view */
+    #dialogue-view {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 460px;
+      overflow-y: auto;
+      padding: 4px 2px
+    }
+
+    .dialogue-bubble {
+      display: flex;
+      flex-direction: column;
+      gap: 4px
+    }
+
+    .bubble-meta {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      padding-left: 4px
+    }
+
+    .bubble-text {
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-size: .9rem;
+      line-height: 1.7;
+      border-left: 3px solid;
+      background: var(--surface2);
+    }
+
+    /* Raw text */
+    .result-box {
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 16px 18px;
+      font-size: .9rem;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+
+    details summary {
+      list-style: none;
+      cursor: pointer;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: .88rem;
+      font-weight: 500;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    details[open] summary {
+      border-radius: 10px 10px 0 0;
+      color: var(--text)
+    }
+
+    details .result-box {
+      border-radius: 0 0 10px 10px
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 22px 0
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px
+    }
+
+    .btn-outline {
+      flex: 1;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    #download-btn {
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent)
+    }
+
+    #download-btn:hover {
+      background: rgba(108, 99, 255, .1)
+    }
+
+    #reset-btn {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted)
+    }
+
+    #reset-btn:hover {
+      border-color: var(--red);
+      color: var(--red)
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px
+    }
+
+    @media(max-width:480px) {
+      header h1 {
+        font-size: 1.6rem
+      }
+
+      .card {
+        padding: 16px
+      }
+
+      .btn-row {
+        flex-direction: column
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>AI 회의록 자동화</h1>
+    <p>오디오 업로드 → 화자 분리 → 음성 인식 → 한국어 요약 자동 생성</p>
+    <div class="pills">
+      <div class="pill">🎙️ Whisper <span>large-v3</span></div>
+      <div class="pill">👥 pyannote <span>3.1</span></div>
+      <div class="pill">🧠 Ollama <span>로컬 LLM</span></div>
+      <div class="pill">🔒 <span>100% 로컬</span></div>
+    </div>
+    <div class="status-row">
+      <div class="dot" id="status-dot"></div>
+      <span class="status-label" id="status-label">서버 상태 확인 중...</span>
+    </div>
+  </header>
+
+  <!-- Upload -->
+  <div class="card" id="upload-card">
+    <div id="drop-zone">
+      <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="1.2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+      </svg>
+      <p class="lbl">파일을 드래그하거나 클릭하여 선택</p>
+      <p class="sub">mp3 · wav · m4a · ogg · flac · webm · mp4</p>
+      <input type="file" id="file-input" accept=".mp3,.wav,.m4a,.ogg,.flac,.webm,.mp4" />
+    </div>
+    <div id="file-info">
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
+      </svg>
+      <div>
+        <div class="fi-name" id="fn"></div>
+        <div class="fi-meta" id="fs"></div>
+      </div>
+      <button id="remove-btn" title="파일 제거">✕</button>
+    </div>
+    <div id="error-box"></div>
+    <button id="submit-btn" disabled>🎙️ 분석 시작</button>
+  </div>
+
+  <!-- Progress -->
+  <div class="card" id="progress-card">
+    <div class="p-top">
+      <span class="p-label" id="p-status">처리 중...</span>
+      <span id="elapsed">00:00</span>
+    </div>
+    <div class="prog-wrap">
+      <div id="prog-fill" class="prog-fill"></div>
+    </div>
+    <ul class="steps">
+      <li class="step" id="step-0"><span class="step-ico">👥</span> 화자 분리 (Diarization)<span class="step-pct"
+          id="pct-0"></span></li>
+      <li class="step" id="step-1"><span class="step-ico">🎙️</span> 음성 인식 (STT)<span class="step-pct"
+          id="pct-1"></span></li>
+      <li class="step" id="step-2"><span class="step-ico">🧠</span> AI 핵심 요약<span class="step-pct" id="pct-2"></span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Result -->
+  <div class="card" id="result-card">
+    <div class="stats-row" id="stats-row"></div>
+
+    <!-- Speaker legend -->
+    <div class="spk-legend" id="spk-legend"></div>
+
+    <!-- Tabs -->
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="dialogue">💬 대화록</button>
+      <button class="tab-btn" data-tab="original">📄 원문</button>
+      <button class="tab-btn" data-tab="summary">🧠 AI 요약</button>
+    </div>
+
+    <!-- Tab: dialogue -->
+    <div id="tab-dialogue">
+      <div class="section-head">
+        <span class="badge cyan">💬 화자별 대화록</span>
+        <button class="copy-btn" id="copy-dialogue">복사</button>
+      </div>
+      <div id="dialogue-view"></div>
+    </div>
+
+    <!-- Tab: original -->
+    <div id="tab-original" style="display:none">
+      <div class="section-head">
+        <span class="badge purple">📄 원문 전체</span>
+        <button class="copy-btn" id="copy-original">복사</button>
+      </div>
+      <div class="result-box" id="original-text"></div>
+    </div>
+
+    <!-- Tab: summary -->
+    <div id="tab-summary" style="display:none">
+      <div class="section-head">
+        <span class="badge green">🧠 AI 요약</span>
+        <button class="copy-btn" id="copy-summary">복사</button>
+      </div>
+      <div class="result-box" id="summary-text"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-outline" id="download-btn">⬇ txt 다운로드</button>
+      <button class="btn-outline" id="reset-btn">↩ 다른 파일</button>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    // ── 화자 색상 ──
+    const SPK_COLORS = [
+      { color: '#6c63ff', bg: 'rgba(108,99,255,.12)' },
+      { color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
+      { color: '#f59e0b', bg: 'rgba(245,158,11,.1)' },
+      { color: '#22d3ee', bg: 'rgba(34,211,238,.1)' },
+      { color: '#f472b6', bg: 'rgba(244,114,182,.1)' },
+      { color: '#a78bfa', bg: 'rgba(167,139,250,.1)' },
+      { color: '#34d399', bg: 'rgba(52,211,153,.1)' },
+      { color: '#fb923c', bg: 'rgba(251,146,60,.1)' },
+    ];
+
+    // ── State ──
+    let selectedFile = null, resultData = null, timerID = null;
+    const fmt = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
+    const fmtT = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+
+    function startTimer() { let s = 0; elapsedEl.textContent = fmtT(0); timerID = setInterval(() => { elapsedEl.textContent = fmtT(++s) }, 1000) }
+    function stopTimer() { clearInterval(timerID); timerID = null }
+
+    const dropZone = $('drop-zone'), fileInput = $('file-input'), fileInfo = $('file-info'),
+      fnEl = $('fn'), fsEl = $('fs'), removeBtn = $('remove-btn'), submitBtn = $('submit-btn'),
+      errorBox = $('error-box'), uploadCard = $('upload-card'), progressCard = $('progress-card'),
+      resultCard = $('result-card'), elapsedEl = $('elapsed'), progFill = $('prog-fill'),
+      pStatus = $('p-status');
+
+    function setFile(f) { selectedFile = f; fnEl.textContent = f.name; fsEl.textContent = fmt(f.size); fileInfo.style.display = 'flex'; submitBtn.disabled = false; errorBox.style.display = 'none' }
+    function clearFile() { selectedFile = null; fileInput.value = ''; fileInfo.style.display = 'none'; submitBtn.disabled = true }
+    function showError(msg) { errorBox.textContent = msg; errorBox.style.display = 'block' }
+
+    // ── Progress step logic ──
+    // 0-10% → step0 (diarization)
+    // 10-90% → step1 (STT)
+    // 90-100% → step2 (summarize)
+    function updateProgress(pct, forcedStep) {
+      progFill.style.width = pct + '%';
+      let activeStep = pct < 10 ? 0 : pct < 100 ? 1 : 1;
+      if (forcedStep === 'summarize') activeStep = 2;
+      [0, 1, 2].forEach(i => {
+        const s = $('step-' + i);
+        s.className = 'step';
+        if (i < activeStep) s.classList.add('done');
+        if (i === activeStep) s.classList.add('active');
+      });
+      if (forcedStep !== 'summarize') $('pct-' + activeStep).textContent = pct + '%';
+    }
+
+    // ── Drag & Drop ──
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over') });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]) });
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]) });
+    removeBtn.addEventListener('click', e => { e.stopPropagation(); clearFile() });
+
+    // ── Submit ──
+    submitBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      uploadCard.style.display = 'none'; resultCard.style.display = 'none'; progressCard.style.display = 'block';
+      updateProgress(0); pStatus.textContent = '화자 분리 중...'; startTimer();
+
+      const form = new FormData();
+      form.append('file', selectedFile);
+
+      try {
+        const response = await fetch('/transcribe', { method: 'POST', body: form });
+        if (!response.ok) throw new Error('서버 오류 (' + response.status + ')');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n\n');
+          buf = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = JSON.parse(line.substring(6));
+            if (data.type === 'progress') {
+              updateProgress(data.percent, data.step);
+              if (data.step === 'summarize') pStatus.textContent = 'AI 요약 중...';
+              else if (data.percent < 10) pStatus.textContent = '화자 분리 중...';
+              else pStatus.textContent = '음성 인식 중... ' + data.percent + '%';
+            } else if (data.type === 'result') {
+              resultData = data;
+              stopTimer();
+              [0, 1, 2].forEach(i => $('step-' + i).className = 'step done');
+              setTimeout(() => { progressCard.style.display = 'none'; showResult() }, 400);
+            } else if (data.type === 'error') {
+              throw new Error(data.message);
+            }
+          }
+        }
+      } catch (e) {
+        stopTimer(); progressCard.style.display = 'none'; uploadCard.style.display = 'block'; showError('오류: ' + e.message);
+      }
+    });
+
+    // ── Render Result ──
+    function speakerColor(name, speakers) {
+      const idx = speakers.indexOf(name) % SPK_COLORS.length;
+      return SPK_COLORS[Math.max(0, idx)];
+    }
+
+    function showResult() {
+      const d = resultData;
+      const speakers = d.speakers || [];
+
+      // Stats
+      $('stats-row').innerHTML = [
+        ['⏱', '처리 시간', d.elapsed_sec + '초'],
+        ['👥', '화자 수', d.speaker_count + '명'],
+        ['📝', '글자 수', d.char_count.toLocaleString() + '자'],
+        ['📁', '파일명', d.filename],
+      ].map(([ico, k, v]) => `<div class="stat">${ico} ${k} <b>${v}</b></div>`).join('');
+
+      // Speaker legend
+      $('spk-legend').innerHTML = speakers.map((s, i) => {
+        const c = SPK_COLORS[i % SPK_COLORS.length];
+        return `<div class="spk-chip" style="color:${c.color};border-color:${c.color};background:${c.bg}">
+      <div class="spk-dot" style="background:${c.color}"></div>${s}
+    </div>`;
+      }).join('');
+
+      // Dialogue bubbles
+      const dv = $('dialogue-view');
+      dv.innerHTML = '';
+      (d.dialogue_lines || []).forEach(line => {
+        const c = speakerColor(line.speaker, speakers);
+        const el = document.createElement('div');
+        el.className = 'dialogue-bubble';
+        el.innerHTML = `<div class="bubble-meta" style="color:${c.color}">${line.speaker}</div>
+      <div class="bubble-text" style="border-left-color:${c.color};background:${c.bg}">${line.text}</div>`;
+        dv.appendChild(el);
+      });
+
+      $('original-text').textContent = d.original_text;
+      $('summary-text').textContent = d.summary;
+      resultCard.style.display = 'block';
+    }
+
+    // ── Tabs ──
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        ['dialogue', 'original', 'summary'].forEach(t => {
+          $('tab-' + t).style.display = t === btn.dataset.tab ? 'block' : 'none';
+        });
+      });
+    });
+
+    // ── Copy ──
+    function bindCopy(id, textFn) {
+      $(id).addEventListener('click', async function () {
+        await navigator.clipboard.writeText(textFn());
+        this.textContent = '✓ 복사됨';
+        setTimeout(() => { this.textContent = '복사' }, 2000);
+      });
+    }
+    bindCopy('copy-dialogue', () => resultData?.dialogue_text || '');
+    bindCopy('copy-original', () => $('original-text').textContent);
+    bindCopy('copy-summary', () => $('summary-text').textContent);
+
+    // ── Download ──
+    $('download-btn').addEventListener('click', () => {
+      const d = resultData;
+      const blob = new Blob([
+        `[화자 목록]\n${d.speakers.join(', ')}\n\n`,
+        `[화자별 대화록]\n${d.dialogue_text}\n\n`,
+        `[원문 전체]\n${d.original_text}\n\n`,
+        `[AI 요약]\n${d.summary}`
+      ], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (d.filename.split('.')[0] || 'meeting') + '_회의록.txt';
+      a.click();
+    });
+
+    $('reset-btn').addEventListener('click', () => {
+      resultData = null; clearFile(); resultCard.style.display = 'none'; uploadCard.style.display = 'block';
+    });
+
+    // ── Health Check ──
+    (async () => {
+      try {
+        const r = await fetch('/health'); const d = await r.json();
+        const ok = d.status === 'ok';
+        $('status-dot').className = 'dot ' + (ok ? 'ok' : 'err');
+        $('status-label').textContent = ok
+          ? `준비 완료 · Whisper ${d.whisper_model} · Diarization ${d.diarization}`
+          : `서버 준비 중 (Whisper: ${d.whisper_model}, Diarization: ${d.diarization})`;
+      } catch {
+        $('status-dot').className = 'dot err';
+        $('status-label').textContent = '연결 오류';
+      }
+    })();
+  </script>
+</body>
+
+</html>

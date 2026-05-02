@@ -1,0 +1,53 @@
+### Build Artifacts ###
+target/
+build/
+bin/
+out/
+
+# Maven/Gradle wrapper
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
+gradle-app.setting
+
+### IDE Specific ###
+# STS / Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# VS Code
+.vscode/
+*.code-workspace
+.claude/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### Environment & Virtual Env ###
+.env
+.env.local
+.env.*.local
+.venv/
+venv/
+ENV/
+
+### OS & Misc ###
+.DS_Store
+Thumbs.db
+HELP.md
+nginx/
